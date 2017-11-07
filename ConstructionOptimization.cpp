@@ -11,8 +11,8 @@ class ThreadPool;
 
 class Brick
 {
-private:
-    int id;      /* task with priority id=0 masontask*/
+
+    int id;      /* task with priority id=0 masontask */
     string color;
     int length;
     int breadth;
@@ -35,8 +35,10 @@ class ThreadPool
 private:
     friend class Worker;    /* Now worker class can access the private members of ThreadPool class */
     vector<thread> workers; /* need to keep track of threads so we can join them */
-    deque<Brick> masonTasks;
-    deque<Brick> labourTasks;
+    //deque<Brick> masonTasks;
+    //deque<Brick> labourTasks;
+	deque< function<void()> > masonTasks;
+	deque< function<void()> > labourTasks;
     mutex mut;
     condition_variable condition;
     bool stop;
@@ -46,6 +48,27 @@ public:
     void enqueue(F f);
     ~ThreadPool();
 };
+
+void Worker::operator()()
+{
+     function<void()> task;
+     while(true)
+        {
+            {
+                unique_lock<mutex>
+                lock(pool.queue_mutex);
+                while(!pool.stop && pool.tasks.empty())
+                    {
+                        pool.condition.wait(lock);
+                    }
+                if(pool.stop)
+                    return;
+                task = pool.tasks.front();
+                pool.tasks.pop_front();
+            }
+            task();
+        }
+}
 
 ThreadPool::ThreadPool(size_t threads):stop(false)
 {
@@ -61,33 +84,55 @@ ThreadPool::~ThreadPool()
         stop = true;
         condition.notify_all();
         for(size_t i = 0;i<workers.size();++i)
-            workers[i].join();
+		{
+			workers[i].join();
+		}
+            
 }
 
-void ThreadPool::enqueue(Brick brick)
+template<class F>
+void ThreadPool::enqueue(int priority,F f)
 {
-     {
-           unique_lock<mutex> lock(mut);
-           if(brick.id==0)
-           {
-               masonTasks.push_back(brick);
-           }
-           else                            /* in case priority id is 1 */
-           {
-               labourTasks.push_back(brick);
-           }
-     }
-     condition.notify_one();
+     if(priority==0)
+	 {
+		 {
+			 unique_lock<mutex> lock(mut);
+			 masonTasks.push_back(function<void()>(f));
+		 }
+		 condition.notify_one(); 
+	 }
+	 else if(priority==1)
+	 {
+		 labourTasks.push_back(function<void()>(f));
+		 if(masonTasks.empty())
+		 {
+			 unique_lock<mutex> lock(mut);
+			 masonTasks.push_back(labourTasks.front());
+			 labourTasks.pop_front();
+		 }
+		 condition.notify_one();
+	 }
 }
 
 int main()
 {
-    ThreadPool pool(10);
-    int no_of_jobs=20;
-    for(int i=1;i<=20;i++)
+    ThreadPool pool(10);/* worker threads=10 */
+    int no_of_task=20;/* mason task + labour task */
+    for(int i=0;i<no_of_task/2;i++)
     {
-
-
+       // pool.enqueue(new Brick(0,"RED",10,5,5));
+       // pool.enqueue(new Brick(1,"BLUE",10,5,5));
+	   
+	   pool.enqueue(1,[Brick b(1,"Blue",10,5,5)]{
+		  cout<<"Work done by Labourer."<<endl;
+	   });
+	   this_thread::sleep_for(chrono::seconds(1));
+	   pool.enqueue(0,[Brick b(0,"RED",10,5,5)]{
+		  cout<<"Work done by mason."<<endl;
+	   });
+	   
+	   
     }
+    return 0;
 
 }
