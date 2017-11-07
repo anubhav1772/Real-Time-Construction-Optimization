@@ -124,11 +124,13 @@ int main()
        // pool.enqueue(new Brick(1,"BLUE",10,5,5));
 	   
 	   pool.enqueue(1,[](Brick b(1,"Blue",10,5,5)){
-		  cout<<"Work done by Labourer."<<endl;
+		  cout<<"Work done by Labourer. ";
+		  cout<<"Color: "<<b.color<<" Length: "<<b.length<<" Breadth: "<<b.breadth<<" Height: "<<b.width<<endl;
 	   });
 	   this_thread::sleep_for(chrono::seconds(1));
 	   pool.enqueue(0,[](Brick b(0,"RED",10,5,5)){
-		  cout<<"Work done by mason."<<endl;
+		  cout<<"Work done by mason. ";
+		  cout<<"Color: "<<b.color<<" Length: "<<b.length<<" Breadth: "<<b.breadth<<" Height: "<<b.width<<endl;
 	   });
 	   
 	   
