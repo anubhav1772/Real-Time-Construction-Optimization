@@ -12,14 +12,20 @@ class ThreadPool;
 class Brick
 {
 
-    int id;      /* task with priority id=0 masontask */
+    //int id;      /* task with priority id=0 masontask */
+public:
     string color;
     int length;
     int breadth;
     int width;
-public:
-    Brick(int priority_id,string col,int l,int b,int h):id(priority_id),color(col),length(l),breadth(b),width(h){ }
+    Brick(string col,int l,int b,int h):color(col),length(l),breadth(b),width(h){ }
+    //void print_details();
 };
+
+/*void Brick::print_details()
+{
+    cout<<"Color: "<<color<<" Length: "<<length<<" Breadth: "<<breadth<<" Height: "<<width<<endl;
+}*/
 
 class Worker
  {
@@ -34,37 +40,35 @@ class ThreadPool
 {
 private:
     friend class Worker;    /* Now worker class can access the private members of ThreadPool class */
+    //friend class Brick;
     vector<thread> workers; /* need to keep track of threads so we can join them */
-    //deque<Brick> masonTasks;
-    //deque<Brick> labourTasks;
-	deque< function<void(Brick)> > masonTasks;
-	deque< function<void(Brick)> > labourTasks;
+	deque< function<void()> > masonTasks;
+	deque< function<void()> > labourTasks;
     mutex mut;
     condition_variable condition;
     bool stop;
 public:
     ThreadPool(size_t);
     template<class F>
-    void enqueue(F f);
+    void enqueue(int priority,F f);
     ~ThreadPool();
 };
 
 void Worker::operator()()
 {
-     function<void(Brick)> task;
+     function<void()> task;
      while(true)
         {
             {
-                unique_lock<mutex>
-                lock(pool.queue_mutex);
-                while(!pool.stop && pool.tasks.empty())
+                unique_lock<mutex> lock(pool.mut);
+                while(!pool.stop && pool.masonTasks.empty())
                     {
                         pool.condition.wait(lock);
                     }
                 if(pool.stop)
                     return;
-                task = pool.tasks.front();
-                pool.tasks.pop_front();
+                task = pool.masonTasks.front();
+                pool.masonTasks.pop_front();
             }
             task();
         }
@@ -87,7 +91,7 @@ ThreadPool::~ThreadPool()
 		{
 			workers[i].join();
 		}
-            
+
 }
 
 template<class F>
@@ -97,13 +101,13 @@ void ThreadPool::enqueue(int priority,F f)
 	 {
 		 {
 			 unique_lock<mutex> lock(mut);
-			 masonTasks.push_back(function<void(Brick)>(f));
+			 masonTasks.push_back(function<void()>(f));
 		 }
-		 condition.notify_one(); 
+		 condition.notify_one();
 	 }
 	 else if(priority==1)
 	 {
-		 labourTasks.push_back(function<void(Brick)>(f));
+		 labourTasks.push_back(function<void()>(f));
 		 if(masonTasks.empty())
 		 {
 			 unique_lock<mutex> lock(mut);
@@ -122,18 +126,23 @@ int main()
     {
        // pool.enqueue(new Brick(0,"RED",10,5,5));
        // pool.enqueue(new Brick(1,"BLUE",10,5,5));
-	   
-	   pool.enqueue(1,[](Brick b(1,"Blue",10,5,5)){
+       Brick b1("Blue",10,5,5);
+	   pool.enqueue(1,[b1]
+       {
 		  cout<<"Work done by Labourer. ";
-		  cout<<"Color: "<<b.color<<" Length: "<<b.length<<" Breadth: "<<b.breadth<<" Height: "<<b.width<<endl;
+		 // b1.print_details();
+		  cout<<"Color: "<<b1.color<<" Length: "<<b1.length<<" Breadth: "<<b1.breadth<<" Height: "<<b1.width<<endl;
+
 	   });
 	   this_thread::sleep_for(chrono::seconds(1));
-	   pool.enqueue(0,[](Brick b(0,"RED",10,5,5)){
+	   Brick b2("Red",10,5,5);
+	   pool.enqueue(0,[b2]{
 		  cout<<"Work done by mason. ";
-		  cout<<"Color: "<<b.color<<" Length: "<<b.length<<" Breadth: "<<b.breadth<<" Height: "<<b.width<<endl;
+		 // b2.print_details();
+		  cout<<"Color: "<<b2.color<<" Length: "<<b2.length<<" Breadth: "<<b2.breadth<<" Height: "<<b2.width<<endl;
 	   });
-	   
-	   
+
+
     }
     return 0;
 
