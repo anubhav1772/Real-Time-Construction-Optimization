@@ -37,8 +37,8 @@ private:
     vector<thread> workers; /* need to keep track of threads so we can join them */
     //deque<Brick> masonTasks;
     //deque<Brick> labourTasks;
-	deque< function<void()> > masonTasks;
-	deque< function<void()> > labourTasks;
+	deque< function<void(Brick)> > masonTasks;
+	deque< function<void(Brick)> > labourTasks;
     mutex mut;
     condition_variable condition;
     bool stop;
@@ -51,7 +51,7 @@ public:
 
 void Worker::operator()()
 {
-     function<void()> task;
+     function<void(Brick)> task;
      while(true)
         {
             {
@@ -97,13 +97,13 @@ void ThreadPool::enqueue(int priority,F f)
 	 {
 		 {
 			 unique_lock<mutex> lock(mut);
-			 masonTasks.push_back(function<void()>(f));
+			 masonTasks.push_back(function<void(Brick)>(f));
 		 }
 		 condition.notify_one(); 
 	 }
 	 else if(priority==1)
 	 {
-		 labourTasks.push_back(function<void()>(f));
+		 labourTasks.push_back(function<void(Brick)>(f));
 		 if(masonTasks.empty())
 		 {
 			 unique_lock<mutex> lock(mut);
@@ -123,11 +123,11 @@ int main()
        // pool.enqueue(new Brick(0,"RED",10,5,5));
        // pool.enqueue(new Brick(1,"BLUE",10,5,5));
 	   
-	   pool.enqueue(1,[Brick b(1,"Blue",10,5,5)]{
+	   pool.enqueue(1,[](Brick b(1,"Blue",10,5,5)){
 		  cout<<"Work done by Labourer."<<endl;
 	   });
 	   this_thread::sleep_for(chrono::seconds(1));
-	   pool.enqueue(0,[Brick b(0,"RED",10,5,5)]{
+	   pool.enqueue(0,[](Brick b(0,"RED",10,5,5)){
 		  cout<<"Work done by mason."<<endl;
 	   });
 	   
