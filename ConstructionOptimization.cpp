@@ -9,6 +9,7 @@ using namespace std;
 
 class ThreadPool;
 
+// In real life construction, task of mason is to build while task of labourer is to carry brick and help mason.
 class Brick
 {
 
@@ -27,6 +28,7 @@ public:
     cout<<"Color: "<<color<<" Length: "<<length<<" Breadth: "<<breadth<<" Height: "<<width<<endl;
 }*/
 
+//worker threads' class
 class Worker
  {
    private:
@@ -41,12 +43,12 @@ class ThreadPool
 private:
     friend class Worker;    /* Now worker class can access the private members of ThreadPool class */
     //friend class Brick;
-    vector<thread> workers; /* need to keep track of threads so we can join them */
-	deque< function<void()> > masonTasks;
-	deque< function<void()> > labourTasks;
+    vector<thread> workers; /* need to keep track of threads so that we can join them */
+    deque< function<void()> > masonTasks;
+    deque< function<void()> > labourTasks;
     mutex mut;
     condition_variable condition;
-    bool stop;
+    bool stop; //stop is true when task is completed.
 public:
     ThreadPool(size_t);
     template<class F>
